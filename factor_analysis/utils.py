@@ -3,8 +3,6 @@
 import pandas as pd
 import numpy as np
 
-from pandas.tseries.offsets import CustomBusinessDay, Day, BusinessDay
-
 def get_clean_factor_and_forward_returns(factor,
                                          prices,
                                          groupby=None,
