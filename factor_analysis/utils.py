@@ -1,7 +1,6 @@
-# -*- coding: utf-8 -*-
-
 import pandas as pd
 import numpy as np
+import re
 
 def get_clean_factor_and_forward_returns(factor,
                                          prices,
@@ -546,6 +545,52 @@ def get_frequency(days):
         return 'M'
     else:
         return 'D'
+
+def demean_forward_returns(factor_data, grouper=None):
+    """
+    Convert forward returns to returns relative to mean
+    period wise all-universe or group returns.
+    group-wise normalization incorporates the assumption of a
+    group neutral portfolio constraint and thus allows allows the
+    factor to be evaluated across groups.
+    For example, if AAPL 5 period return is 0.1% and mean 5 period
+    return for the Technology stocks in our universe was 0.5% in the
+    same period, the group adjusted 5 period return for AAPL in this
+    period is -0.4%.
+    Parameters
+    ----------
+    factor_data : pd.DataFrame - MultiIndex
+        Forward returns indexed by date and asset.
+        Separate column for each forward return window.
+    grouper : list
+        If True, demean according to group.
+    Returns
+    -------
+    adjusted_forward_returns : pd.DataFrame - MultiIndex
+        DataFrame of the same format as the input, but with each
+        security's returns normalized by group.
+    """
+
+    factor_data = factor_data.copy()
+
+    if not grouper:
+        grouper = factor_data.index.get_level_values('date')
+
+    cols = get_forward_returns_columns(factor_data.columns)
+    factor_data[cols] = factor_data.groupby(grouper)[cols] \
+        .transform(lambda x: x - x.mean())
+
+    return factor_data
+
+def get_forward_returns_columns(columns):
+    """
+    Utility that detects and returns the columns that are forward returns
+    """
+
+    pattern = re.compile(r"^(\d+([D|M|Q]))+$", re.IGNORECASE)
+    valid_columns = [(pattern.match(col) is not None) for col in columns]
+
+    return columns[valid_columns]
 
 class MaxLossExceededError(Exception):
     pass
